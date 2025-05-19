@@ -34,6 +34,12 @@ class AutoClickerApp:
         self.bind_hotkey()  # rebind using saved hotkey
         self.setup_ui()     # Build the UI
         self.bind_hotkey()  # Set the global F6 hotkey
+    
+    def set_current_position(self):
+        x, y = self.mouse.position # Get current mouse position
+        self.fixed_x.set(str(int(x))) # Set X coordinate
+        self.fixed_y.set(str(int(y))) # Set Y coordinate
+
 
     def setup_ui(self):
         # Hotkey input
@@ -61,6 +67,9 @@ class AutoClickerApp:
         # Fixed position coordinates
         position_frame = tk.Frame(self.master)
         position_frame.pack(pady=2)
+
+        # Button to set current position
+        tk.Button(self.master, text="Set from Current Position", command=self.set_current_position).pack(pady=2) 
 
         # X and Y coordinates
         tk.Label(position_frame, text="X:").grid(row=0, column=0)
