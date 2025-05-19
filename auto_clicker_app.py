@@ -25,6 +25,11 @@ class AutoClickerApp:
         self.click_limit = tk.StringVar(value="0")      # Number of clicks (0 = infinite)
         self.status_text = tk.StringVar(value="Status: IDLE")  # Live status display
 
+        self.use_fixed_position = tk.BooleanVar(value=False) # Fixed position toggle
+        self.fixed_x = tk.StringVar(value="0") # Fixed X position
+        self.fixed_y = tk.StringVar(value="0") # Fixed Y position
+
+
         self.load_settings() # Load settings from file if available
         self.bind_hotkey()  # rebind using saved hotkey
         self.setup_ui()     # Build the UI
@@ -49,6 +54,21 @@ class AutoClickerApp:
         tk.Label(self.master, text="Click Count (0 for infinite):").pack()
         self.count_entry = tk.Entry(self.master, textvariable=self.click_limit)
         self.count_entry.pack()
+        
+        # Fixed position toggle
+        tk.Checkbutton(self.master, text="Click at specific position", variable=self.use_fixed_position).pack()
+
+        # Fixed position coordinates
+        position_frame = tk.Frame(self.master)
+        position_frame.pack(pady=2)
+
+        # X and Y coordinates
+        tk.Label(position_frame, text="X:").grid(row=0, column=0)
+        tk.Entry(position_frame, textvariable=self.fixed_x, width=6).grid(row=0, column=1)
+
+        tk.Label(position_frame, text="Y:").grid(row=0, column=2)
+        tk.Entry(position_frame, textvariable=self.fixed_y, width=6).grid(row=0, column=3)
+
 
         # Status label
         self.status_label = tk.Label(self.master, textvariable=self.status_text, fg="red")
@@ -81,16 +101,32 @@ class AutoClickerApp:
         self.update_status()
 
     def click_loop(self, interval, button, limit):
-        # Perform clicking until stopped or limit is reached
-        count = 0
-        while self.clicking:
+        count = 0 # Initialize click count
+        original_pos = self.mouse.position # Store original mouse position
+
+        try: # Get fixed position coordinates
+            x = int(self.fixed_x.get()) 
+            y = int(self.fixed_y.get())
+        except ValueError:
+            x, y = 0, 0  # fallback if input is invalid
+
+        while self.clicking: # Loop until clicking is stopped
+            # Check if limit is reached
             if limit and count >= limit:
                 break
-            self.mouse.click(button)   # Click with the selected button
-            count += 1
-            time.sleep(interval)       # Wait based on the delay
-        self.clicking = False          # Reset state if loop ends
-        self.update_status()           # Refresh GUI
+            if self.use_fixed_position.get(): # If fixed position is enabled
+                self.mouse.position = (x, y) # Move mouse to fixed position
+            self.mouse.click(button) # Perform the click
+            count += 1 # Increment click count
+            time.sleep(interval) # Wait for the specified interval
+
+        # Optionally restore original mouse position
+        if self.use_fixed_position.get():
+            self.mouse.position = original_pos
+        # Reset clicking state
+        self.clicking = False
+        self.update_status()
+
 
     def update_status(self):
         # Update the status label based on clicker state
@@ -110,17 +146,24 @@ class AutoClickerApp:
                     self.click_type.set(data.get("click_type", "Left")) # Default click type
                     self.click_limit.set(data.get("click_limit", "0")) # Default click limit
                     self.hotkey.set(data.get("hotkey", "f6")) # Default hotkey
+                    self.fixed_x.set(data.get("fixed_x", "0")) # Default fixed X position
+                    self.fixed_y.set(data.get("fixed_y", "0")) # Default fixed Y position
+                    self.use_fixed_position.set(data.get("use_fixed_position", False)) # Default fixed position toggle
             except Exception as e:
                 print("Failed to load settings:", e) # Handle any errors
 
     def save_settings(self): # Save settings to a JSON file
         # Create a dictionary with the current settings
         data = { 
-            "delay": self.delay.get(),
-            "click_type": self.click_type.get(),
-            "click_limit": self.click_limit.get(),
-            "hotkey": self.hotkey.get() # Save the hotkey
+            "delay": self.delay.get(), # Save the delay
+            "click_type": self.click_type.get(), # Save the click type
+            "click_limit": self.click_limit.get(), # Save the click limit
+            "hotkey": self.hotkey.get(), # Save the hotkey
+            "fixed_x": self.fixed_x.get(),
+            "fixed_y": self.fixed_y.get(),
+            "use_fixed_position": self.use_fixed_position.get()
         }
+        
         try:
             with open(self.SETTINGS_FILE, "w") as f: # Open the file for writing
                 json.dump(data, f) # Save the settings as JSON
