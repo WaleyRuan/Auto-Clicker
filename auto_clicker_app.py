@@ -11,6 +11,7 @@ import os
 class AutoClickerApp:
     def __init__(self, master):
         self.SETTINGS_FILE = "settings.json" # File to save settings
+        self.hotkey = tk.StringVar(value="f6")  #Holds hotkey value
         self.master = master
         self.master.title("Auto Clicker")
 
@@ -25,10 +26,16 @@ class AutoClickerApp:
         self.status_text = tk.StringVar(value="Status: IDLE")  # Live status display
 
         self.load_settings() # Load settings from file if available
+        self.bind_hotkey()  # rebind using saved hotkey
         self.setup_ui()     # Build the UI
         self.bind_hotkey()  # Set the global F6 hotkey
 
     def setup_ui(self):
+        # Hotkey input
+        tk.Label(self.master, text="Hotkey to Toggle:").pack()
+        tk.Entry(self.master, textvariable=self.hotkey).pack()
+        tk.Button(self.master, text="Apply Hotkey", command=self.bind_hotkey).pack(pady=4)
+
         # Delay input
         tk.Label(self.master, text="Click Delay (ms):").pack()
         self.delay_entry = tk.Entry(self.master, textvariable=self.delay)
@@ -51,8 +58,11 @@ class AutoClickerApp:
         tk.Button(self.master, text="Exit", command=self.exit_app).pack(pady=10)
 
     def bind_hotkey(self):
-        # Bind the F6 key globally to start/stop clicking
-        keyboard.add_hotkey("f6", self.toggle_clicking)
+        try: # Unbind any existing hotkeys
+            keyboard.unhook_all_hotkeys()  
+            keyboard.add_hotkey(self.hotkey.get(), self.toggle_clicking) # Bind the new hotkey
+        except Exception as e: # Handle any errors
+            print("Failed to bind hotkey:", e)
 
     def toggle_clicking(self):
         # Toggle clicker on or off
@@ -99,6 +109,7 @@ class AutoClickerApp:
                     self.delay.set(data.get("delay", "100")) # Default delay
                     self.click_type.set(data.get("click_type", "Left")) # Default click type
                     self.click_limit.set(data.get("click_limit", "0")) # Default click limit
+                    self.hotkey.set(data.get("hotkey", "f6")) # Default hotkey
             except Exception as e:
                 print("Failed to load settings:", e) # Handle any errors
 
@@ -107,7 +118,8 @@ class AutoClickerApp:
         data = { 
             "delay": self.delay.get(),
             "click_type": self.click_type.get(),
-            "click_limit": self.click_limit.get()
+            "click_limit": self.click_limit.get(),
+            "hotkey": self.hotkey.get() # Save the hotkey
         }
         try:
             with open(self.SETTINGS_FILE, "w") as f: # Open the file for writing
