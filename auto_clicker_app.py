@@ -3,10 +3,14 @@ import threading
 import time
 import keyboard
 from pynput.mouse import Button, Controller
+#Save Feature
+import json
+import os
 
 # Main application class
 class AutoClickerApp:
     def __init__(self, master):
+        self.SETTINGS_FILE = "settings.json" # File to save settings
         self.master = master
         self.master.title("Auto Clicker")
 
@@ -20,6 +24,7 @@ class AutoClickerApp:
         self.click_limit = tk.StringVar(value="0")      # Number of clicks (0 = infinite)
         self.status_text = tk.StringVar(value="Status: IDLE")  # Live status display
 
+        self.load_settings() # Load settings from file if available
         self.setup_ui()     # Build the UI
         self.bind_hotkey()  # Set the global F6 hotkey
 
@@ -85,6 +90,34 @@ class AutoClickerApp:
         else:
             self.status_text.set("Status: IDLE")
             self.status_label.config(fg="red")
+
+    def load_settings(self): # Load settings from a JSON file
+        if os.path.exists(self.SETTINGS_FILE): # Check if the settings file exists
+            try:
+                with open(self.SETTINGS_FILE, "r") as f: # Open the file for reading
+                    data = json.load(f)
+                    self.delay.set(data.get("delay", "100")) # Default delay
+                    self.click_type.set(data.get("click_type", "Left")) # Default click type
+                    self.click_limit.set(data.get("click_limit", "0")) # Default click limit
+            except Exception as e:
+                print("Failed to load settings:", e) # Handle any errors
+
+    def save_settings(self): # Save settings to a JSON file
+        # Create a dictionary with the current settings
+        data = { 
+            "delay": self.delay.get(),
+            "click_type": self.click_type.get(),
+            "click_limit": self.click_limit.get()
+        }
+        try:
+            with open(self.SETTINGS_FILE, "w") as f: # Open the file for writing
+                json.dump(data, f) # Save the settings as JSON
+        except Exception as e: # Handle any errors
+            print("Failed to save settings:", e)
+
+    def exit_app(self): # Exit the application
+        self.save_settings() # Save settings before exiting
+        self.master.quit() # Close the main window
 
 # Entry point
 def main():
