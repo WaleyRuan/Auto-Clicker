@@ -47,8 +47,8 @@ class AutoClickerApp:
         self.status_label = tk.Label(self.master, textvariable=self.status_text, fg="red")
         self.status_label.pack(pady=5)
 
-        # Exit button
-        tk.Button(self.master, text="Exit", command=self.master.quit).pack(pady=10)
+        # Exit button, which also saves settings
+        tk.Button(self.master, text="Exit", command=self.exit_app).pack(pady=10)
 
     def bind_hotkey(self):
         # Bind the F6 key globally to start/stop clicking
@@ -117,7 +117,7 @@ class AutoClickerApp:
 
     def exit_app(self): # Exit the application
         self.save_settings() # Save settings before exiting
-        self.master.quit() # Close the main window
+        self.master.quit() # Close the Tkinter window
 
 # Entry point
 def main():
