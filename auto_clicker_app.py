@@ -4,54 +4,94 @@ import time
 import keyboard
 from pynput.mouse import Button, Controller
 
-#Global
-clicking = False
-mouse_controller = Controller()
+# Main application class
+class AutoClickerApp:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Auto Clicker")
 
-def click_loop(interval, button, limit):
-    global clicking
-    count = 0
-    while clicking:
-        if limit and count >= limit:
-            break
-        mouse_controller.click(button)
-        count += 1
-        time.sleep(interval)
-    clicking = False
-    update_status()
+        # Internal clicker state
+        self.clicking = False               # Tracks whether the auto clicker is active
+        self.mouse = Controller()           # Controls the mouse using pynput
 
-def toggle_clicking():
-    global clicking
-    clicking = not clicking
-    if clicking:
-        interval = float(delay_entry.get()) / 1000 #ms to second
-        btn = Button.left if click_type_var.get() == "Left" else Button.right
-        limit = int(limit_entry.get()) if click_count_entry.get() else 0
-        threading.Thread(target=click_loop, args=(interval, btn, limit), daemon=True).start()
-    update_status()
-keyboard.add_hotkey('f6', toggle_clicking) #Ctrl+Shift+S to start/stop clicking, Here you can change key bind
+        # Tkinter Variables (bind UI to internal state)
+        self.delay = tk.StringVar(value="100")          # Click delay in milliseconds
+        self.click_type = tk.StringVar(value="Left")    # Left or right click
+        self.click_limit = tk.StringVar(value="0")      # Number of clicks (0 = infinite)
+        self.status_text = tk.StringVar(value="Status: IDLE")  # Live status display
 
-#GUI
-root = tk.Tk()
-root.title("Auto Clicker")
-tk.Label(root, text="Click Delay (ms):").pack()
-delay_entry = tk.Entry(root)
-delay_entry.insert(0, "100") #default delay
-delay_entry.pack()
+        self.setup_ui()     # Build the UI
+        self.bind_hotkey()  # Set the global F6 hotkey
 
-tk.Label(root, text="Click Type:").pack()
-click_loop_var = tk.StringVar(value="Left")
-tk.OptionMenu(root, click_loop_var, "Left", "Right").pack()
+    def setup_ui(self):
+        # Delay input
+        tk.Label(self.master, text="Click Delay (ms):").pack()
+        self.delay_entry = tk.Entry(self.master, textvariable=self.delay)
+        self.delay_entry.pack()
 
-tk.Label(root, text="Click Count (0 for infinite):").pack()
-click_count_entry = tk.Entry(root)
-click_count_entry.insert(0, "0") #default click count
-click_count_entry.pack()
+        # Click type dropdown (Left/Right)
+        tk.Label(self.master, text="Click Type:").pack()
+        tk.OptionMenu(self.master, self.click_type, "Left", "Right").pack()
 
-status_label = tk.Label(root, text="Status: IDLE", fg="red")
-status_label.pack(pady = 5)
+        # Max click count
+        tk.Label(self.master, text="Click Count (0 for infinite):").pack()
+        self.count_entry = tk.Entry(self.master, textvariable=self.click_limit)
+        self.count_entry.pack()
 
-def update_status():
-    status_label.config(text="Status: CLICKING" if clicking else "Status: IDLE", fg="green" if clicking else "red")
+        # Status label
+        self.status_label = tk.Label(self.master, textvariable=self.status_text, fg="red")
+        self.status_label.pack(pady=5)
 
-tk.Button(root, text="Exit", command=lambda: root.quit()).pack(pady=10)
+        # Exit button
+        tk.Button(self.master, text="Exit", command=self.master.quit).pack(pady=10)
+
+    def bind_hotkey(self):
+        # Bind the F6 key globally to start/stop clicking
+        keyboard.add_hotkey("f6", self.toggle_clicking)
+
+    def toggle_clicking(self):
+        # Toggle clicker on or off
+        self.clicking = not self.clicking
+        if self.clicking:
+            # Read delay, click type, and limit from GUI
+            delay_sec = float(self.delay.get()) / 1000      # Convert ms to seconds
+            max_clicks = int(self.click_limit.get()) if self.click_limit.get().isdigit() else 0
+            btn = Button.left if self.click_type.get() == "Left" else Button.right
+
+            # Run clicking logic in a background thread
+            thread = threading.Thread(target=self.click_loop, args=(delay_sec, btn, max_clicks), daemon=True)
+            thread.start()
+
+        # Update the status label
+        self.update_status()
+
+    def click_loop(self, interval, button, limit):
+        # Perform clicking until stopped or limit is reached
+        count = 0
+        while self.clicking:
+            if limit and count >= limit:
+                break
+            self.mouse.click(button)   # Click with the selected button
+            count += 1
+            time.sleep(interval)       # Wait based on the delay
+        self.clicking = False          # Reset state if loop ends
+        self.update_status()           # Refresh GUI
+
+    def update_status(self):
+        # Update the status label based on clicker state
+        if self.clicking:
+            self.status_text.set("Status: CLICKING")
+            self.status_label.config(fg="green")
+        else:
+            self.status_text.set("Status: IDLE")
+            self.status_label.config(fg="red")
+
+# Entry point
+def main():
+    root = tk.Tk()
+    app = AutoClickerApp(root)
+    root.mainloop()
+
+# Run app
+if __name__ == "__main__":
+    main()
